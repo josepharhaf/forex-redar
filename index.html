@@ -3,77 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>قناص بوكت اوبشن - Pocket Sniper</title>
+    <title>رادار القناص - تنبيهات صوتية</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
     <style>
         body { background-color: #05070A; color: white; font-family: sans-serif; }
-        .asset-card { background: #0E141B; border: 2px solid #1E293B; border-radius: 1.5rem; overflow: hidden; margin-bottom: 2rem; }
-        .signal-header { background: #151D27; padding: 1rem; border-bottom: 1px solid #1E293B; }
-        .chart-container { height: 300px; }
-        .analysis-container { height: 450px; }
-        .best-time { background: #1E40AF; color: #60A5FA; padding: 4px 12px; rounded-full; font-size: 10px; font-bold; }
+        .asset-card { background: #0E141B; border: 1px solid #1E293B; border-radius: 1.2rem; overflow: hidden; margin-bottom: 2.5rem; }
+        .btn-activate { background: linear-gradient(to right, #1E40AF, #3B82F6); color: white; padding: 12px; border-radius: 12px; font-weight: bold; width: 100%; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(30, 64, 175, 0.4); }
     </style>
 </head>
 <body class="p-4">
 
-    <div class="max-w-4xl mx-auto mb-6 text-center">
-        <h1 class="text-2xl font-black text-blue-500 uppercase italic">Pocket Sniper v7</h1>
-        <p class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">مخصص لصفقات الـ 1 دقيقة والـ 5 دقائق</p>
+    <div class="max-w-4xl mx-auto">
+        <button onclick="enableAllSystems()" class="btn-activate">🔊 تفعيل نظام التنبيهات والصوت</button>
+        
+        <div id="radar-grid"></div>
     </div>
 
-    <div class="max-w-4xl mx-auto" id="grid">
-        </div>
-
     <script>
+        // قائمة الأصول الأساسية
         const assets = [
-            { symbol: "OANDA:XAUUSD", name: "GOLD (الذهب)", id: "gold" },
-            { symbol: "FX:EURUSD", name: "EUR/USD", id: "eurusd" },
-            { symbol: "FX:GBPUSD", name: "GBP/USD", id: "gbpusd" },
-            { symbol: "BINANCE:BTCUSDT", name: "BTC/USDT", id: "btc" }
+            { symbol: "OANDA:XAUUSD", name: "الذهب GOLD", id: "gold" },
+            { symbol: "BINANCE:BTCUSDT", name: "بيتكوين BTC", id: "btc" },
+            { symbol: "FX:EURUSD", name: "اليورو دولار EUR/USD", id: "eurusd" },
+            { symbol: "FX:GBPUSD", name: "الباوند دولار GBP/USD", id: "gbpusd" },
+            { symbol: "FX:USDJPY", name: "الدولار ين USD/JPY", id: "usdjpy" }
         ];
 
-        function render() {
-            const grid = document.getElementById('grid');
-            assets.forEach(asset => {
-                grid.innerHTML += `
-                    <div class="asset-card">
-                        <div class="signal-header flex justify-between items-center">
-                            <div>
-                                <h2 class="font-bold text-blue-400">${asset.name}</h2>
-                                <span class="best-time">مدة الصفقة المفضلة: 1m - 5m</span>
-                            </div>
-                            <div class="text-[10px] text-green-500 animate-pulse font-mono">LIVE ●</div>
-                        </div>
-                        <div id="chart_${asset.id}" class="chart-container"></div>
-                        <div id="sig_${asset.id}" class="analysis-container"></div>
-                    </div>
-                `;
+        // صوت التنبيه (تردد احترافي قصير)
+        const audioAlert = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+
+        function enableAllSystems() {
+            // تفعيل الإشعارات
+            Notification.requestPermission().then(permission => {
+                if (permission === "granted") {
+                    new Notification("النظام يعمل", { body: "تم تفعيل الصوت والإشعارات بنجاح" });
+                    audioAlert.play(); // تجربة الصوت عند التفعيل
+                }
             });
         }
 
-        window.onload = function() {
-            render();
-            assets.forEach(asset => {
-                // 1. الرسم البياني (Candlesticks)
-                new TradingView.widget({
-                    "autosize": true, "symbol": asset.symbol, "interval": "1", "theme": "dark", "style": "1",
-                    "locale": "ar", "hide_top_toolbar": true, "container_id": `chart_${asset.id}`, "backgroundColor": "#0E141B"
+        // دالة إرسال التنبيه الصوتي والمرئي
+        function triggerAlert(assetName, direction) {
+            if (Notification.permission === "granted") {
+                new Notification(`إشارة قوية: ${assetName}`, {
+                    body: `الاتجاه: ${direction} | المدة: 1-2 دقيقة`,
                 });
+                audioAlert.play(); // تشغيل الصوت
+            }
+        }
 
-                // 2. المحلل التقني (المؤشرات والمتوسطات)
+        function init() {
+            const grid = document.getElementById('radar-grid');
+            assets.forEach(asset => {
+                const card = document.createElement('div');
+                card.className = "asset-card";
+                card.innerHTML = `
+                    <div class="p-4 bg-[#151D27] flex justify-between">
+                        <span class="font-bold text-blue-400">${asset.name}</span>
+                        <span class="text-[10px] text-gray-500 font-bold">1M ANALYSIS</span>
+                    </div>
+                    <div id="sig_${asset.id}" style="height: 420px;"></div>
+                `;
+                grid.appendChild(card);
+                
                 const script = document.createElement('script');
                 script.type = 'text/javascript';
                 script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js';
                 script.async = true;
                 script.innerHTML = JSON.stringify({
                     "interval": "1m", "width": "100%", "isTransparent": true, "height": "100%",
-                    "symbol": asset.symbol, "showIntervalTabs": true, "locale": "ar", "colorTheme": "dark"
+                    "symbol": asset.symbol, "showIntervalTabs": false, "locale": "ar", "colorTheme": "dark"
                 });
                 document.getElementById(`sig_${asset.id}`).appendChild(script);
             });
-        };
+        }
+
+        init();
     </script>
 </body>
 </html>
-
