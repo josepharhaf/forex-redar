@@ -3,70 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>رادار القناص - وضع النبض</title>
+    <title>رادار الفوركس - نظام التصفية الذكي</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://s3.tradingview.com/tv.js"></script>
     <style>
         body { background-color: #05070A; color: white; text-align: center; font-family: sans-serif; }
-        .active-pulse { animation: shadow-pulse 1.5s infinite; background: #064E3B !important; }
-        @keyframes shadow-pulse { 0% { box-shadow: 0 0 0 0px rgba(16, 185, 129, 0.4); } 100% { box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); } }
+        .filter-section { background: #0E141B; border: 1px solid #1E293B; border-radius: 1rem; padding: 15px; margin-bottom: 20px; }
+        .asset-card { background: #0E141B; border: 1px solid #1E293B; border-radius: 1.5rem; overflow: hidden; margin-bottom: 2.5rem; display: none; }
+        .asset-card.active { display: block; }
+        .checkbox-item { display: inline-flex; align-items: center; background: #151D27; padding: 5px 12px; border-radius: 8px; margin: 4px; border: 1px solid #1E293B; cursor: pointer; font-size: 12px; }
+        .checkbox-item input { margin-left: 8px; }
     </style>
 </head>
 <body class="p-4">
 
-    <button id="actionBtn" onclick="runPulseSystem()" class="w-full p-5 bg-blue-600 rounded-2xl font-black mb-2 transition-all duration-500">
-        🚀 تشغيل رادار النبض اللحظي
-    </button>
-    
-    <div id="statusUpdate" class="text-[10px] text-gray-500 mb-6 uppercase tracking-tighter">
-        الحالة: بانتظار إشارة البدء...
+    <h1 class="text-blue-500 font-black mb-4 italic text-lg">FX SELECTOR PRO</h1>
+
+    <div class="filter-section max-w-4xl mx-auto">
+        <p class="text-[10px] text-gray-500 mb-3 uppercase font-bold">اختر العملات التي تريد مراقبتها:</p>
+        <div id="filter-controls" class="flex flex-wrap justify-center">
+            </div>
     </div>
 
-    <div id="radar-grid" class="max-w-4xl mx-auto space-y-8"></div>
+    <button id="actionBtn" onclick="runPulseSystem()" class="max-w-4xl w-full p-4 bg-blue-600 rounded-xl font-bold mb-6 transition-all">
+        🚀 تشغيل وضع المراقبة اللحظية
+    </button>
+    
+    <div id="radar-grid" class="max-w-4xl mx-auto"></div>
 
     <script>
-        const alertSound = new Audio('https://notificationsounds.com/storage/sounds/file-sounds-1150-pristine.mp3');
-        let seconds = 0;
+        const pairs = [
+            {s:"OANDA:XAUUSD", n:"الذهب GOLD", id:"gold"},
+            {s:"BINANCE:BTCUSDT", n:"بيتكوين BTC", id:"btc"},
+            {s:"FX:EURUSD", n:"EUR/USD", id:"eurusd"},
+            {s:"FX:GBPUSD", n:"GBP/USD", id:"gbpusd"},
+            {s:"FX:USDJPY", n:"USD/JPY", id:"usdjpy"},
+            {s:"FX:AUDUSD", n:"AUD/USD", id:"audusd"},
+            {s:"FX:USDCAD", n:"USD/CAD", id:"usdcad"},
+            {s:"FX:EURJPY", n:"EUR/JPY", id:"eurjpy"},
+            {s:"FX:GBPJPY", n:"GBP/JPY", id:"gbpjpy"}
+        ];
 
         function runPulseSystem() {
-            Notification.requestPermission().then(perm => {
-                if(perm === 'granted') {
-                    const btn = document.getElementById('actionBtn');
-                    const status = document.getElementById('statusUpdate');
-                    
-                    btn.classList.add('active-pulse');
-                    alertSound.play();
-
-                    // بدء العداد التنازلي للتأكيد أن النظام يعمل
-                    setInterval(() => {
-                        seconds++;
-                        btn.innerHTML = `🎯 الرادار يعمل بنجاح (نبضة رقم: ${seconds})`;
-                        status.innerHTML = `✅ فحص نشط لـ RSI و MACD | النظام مستيقظ الآن`;
-                        status.style.color = "#10B981";
-                    }, 1000);
-                }
-            });
+            document.getElementById('actionBtn').classList.add('opacity-50');
+            document.getElementById('actionBtn').innerHTML = "🎯 الرادار يعمل الآن...";
+            // تم إلغاء الرنة بناءً على طلبك
         }
 
-        // إعداد الشاشات
-        const pairs = [{s:"XAUUSD", n:"الذهب"}, {s:"EURUSD", n:"اليورو دولار"}];
+        function toggleAsset(id) {
+            const card = document.getElementById(`card_${id}`);
+            const checkbox = document.getElementById(`check_${id}`);
+            if (checkbox.checked) {
+                card.classList.add('active');
+            } else {
+                card.classList.remove('active');
+            }
+        }
+
         function init() {
             const grid = document.getElementById('radar-grid');
+            const controls = document.getElementById('filter-controls');
+
             pairs.forEach(p => {
+                // 1. توليد أزرار التصفية
+                controls.innerHTML += `
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="check_${p.id}" onchange="toggleAsset('${p.id}')">
+                        ${p.n}
+                    </label>
+                `;
+
+                // 2. توليد البطاقات (مخفية افتراضياً)
                 grid.innerHTML += `
-                    <div class="bg-[#0E141B] rounded-3xl border border-gray-800 overflow-hidden">
-                        <div class="p-3 bg-gray-900 font-bold text-blue-400">${p.n}</div>
-                        <div id="c_${p.s}" style="height:300px;"></div>
-                        <div id="t_${p.s}" style="height:400px;"></div>
+                    <div class="asset-card" id="card_${p.id}">
+                        <div class="p-3 bg-gray-900 font-bold text-blue-400 border-b border-gray-800">${p.n}</div>
+                        <div id="c_${p.id}" style="height:280px;"></div>
+                        <div id="t_${p.id}" style="height:400px;"></div>
                     </div>`;
+
                 setTimeout(() => {
-                    new TradingView.widget({"autosize":true,"symbol":p.s,"interval":"1","theme":"dark","container_id":`c_${p.s}`,"hide_top_toolbar":true});
+                    new TradingView.widget({
+                        "autosize":true, "symbol":p.s, "interval":"1", "theme":"dark",
+                        "container_id":`c_${p.id}`, "hide_top_toolbar":true, "backgroundColor":"#0E141B"
+                    });
                     const s = document.createElement('script');
                     s.src = "https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js";
                     s.async = true;
-                    s.innerHTML = JSON.stringify({"interval":"1m","width":"100%","height":"100%","symbol":p.s,"colorTheme":"dark","locale":"ar"});
-                    document.getElementById(`t_${p.s}`).appendChild(s);
-                }, 500);
+                    s.innerHTML = JSON.stringify({
+                        "interval":"1m", "width":"100%", "height":"100%", "symbol":p.s, "colorTheme":"dark", "locale":"ar"
+                    });
+                    document.getElementById(`t_${p.id}`).appendChild(s);
+                }, 1000);
             });
         }
         init();
