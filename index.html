@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>رادار الفوركس - نظام التصفية الذكي</title>
+    <title>رادار القناص - مؤشر القوة</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://s3.tradingview.com/tv.js"></script>
     <style>
@@ -11,87 +11,81 @@
         .filter-section { background: #0E141B; border: 1px solid #1E293B; border-radius: 1rem; padding: 15px; margin-bottom: 20px; }
         .asset-card { background: #0E141B; border: 1px solid #1E293B; border-radius: 1.5rem; overflow: hidden; margin-bottom: 2.5rem; display: none; }
         .asset-card.active { display: block; }
-        .checkbox-item { display: inline-flex; align-items: center; background: #151D27; padding: 5px 12px; border-radius: 8px; margin: 4px; border: 1px solid #1E293B; cursor: pointer; font-size: 12px; }
-        .checkbox-item input { margin-left: 8px; }
+        .checkbox-item { display: inline-flex; align-items: center; background: #151D27; padding: 5px 12px; border-radius: 8px; margin: 4px; border: 1px solid #1E293B; cursor: pointer; font-size: 11px; }
+        .active-pulse { animation: shadow-pulse 1.5s infinite; background: #064E3B !important; }
+        @keyframes shadow-pulse { 0% { box-shadow: 0 0 0 0px rgba(16, 185, 129, 0.4); } 100% { box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); } }
     </style>
 </head>
 <body class="p-4">
 
-    <h1 class="text-blue-500 font-black mb-4 italic text-lg">FX SELECTOR PRO</h1>
-
-    <div class="filter-section max-w-4xl mx-auto">
-        <p class="text-[10px] text-gray-500 mb-3 uppercase font-bold">اختر العملات التي تريد مراقبتها:</p>
-        <div id="filter-controls" class="flex flex-wrap justify-center">
-            </div>
+    <div class="max-w-4xl mx-auto mb-6">
+        <div class="bg-gray-900 p-2 rounded-t-xl text-[10px] font-bold text-blue-400">مؤشر قوة العملات اللحظي</div>
+        <div id="power_meter" style="height: 120px; width: 100%;"></div>
     </div>
 
-    <button id="actionBtn" onclick="runPulseSystem()" class="max-w-4xl w-full p-4 bg-blue-600 rounded-xl font-bold mb-6 transition-all">
-        🚀 تشغيل وضع المراقبة اللحظية
+    <div class="filter-section max-w-4xl mx-auto">
+        <p class="text-[10px] text-gray-500 mb-3 uppercase font-bold">تصفية الأزواج (✅ مختارة تلقائياً):</p>
+        <div id="filter-controls" class="flex flex-wrap justify-center"></div>
+    </div>
+
+    <button id="actionBtn" onclick="runPulseSystem()" class="max-w-4xl w-full p-4 bg-blue-600 rounded-xl font-black mb-6 transition-all">
+        🚀 تشغيل وضع النبض والمراقبة
     </button>
     
     <div id="radar-grid" class="max-w-4xl mx-auto"></div>
 
     <script>
+        let seconds = 0;
         const pairs = [
             {s:"OANDA:XAUUSD", n:"الذهب GOLD", id:"gold"},
-            {s:"BINANCE:BTCUSDT", n:"بيتكوين BTC", id:"btc"},
             {s:"FX:EURUSD", n:"EUR/USD", id:"eurusd"},
             {s:"FX:GBPUSD", n:"GBP/USD", id:"gbpusd"},
             {s:"FX:USDJPY", n:"USD/JPY", id:"usdjpy"},
             {s:"FX:AUDUSD", n:"AUD/USD", id:"audusd"},
-            {s:"FX:USDCAD", n:"USD/CAD", id:"usdcad"},
-            {s:"FX:EURJPY", n:"EUR/JPY", id:"eurjpy"},
-            {s:"FX:GBPJPY", n:"GBP/JPY", id:"gbpjpy"}
+            {s:"FX:USDCAD", n:"USD/CAD", id:"usdcad"}
         ];
 
         function runPulseSystem() {
-            document.getElementById('actionBtn').classList.add('opacity-50');
-            document.getElementById('actionBtn').innerHTML = "🎯 الرادار يعمل الآن...";
-            // تم إلغاء الرنة بناءً على طلبك
+            document.getElementById('actionBtn').classList.add('active-pulse');
+            setInterval(() => { seconds++; document.getElementById('actionBtn').innerHTML = `🎯 النظام يعمل (نبضة: ${seconds})`; }, 1000);
         }
 
         function toggleAsset(id) {
             const card = document.getElementById(`card_${id}`);
             const checkbox = document.getElementById(`check_${id}`);
-            if (checkbox.checked) {
-                card.classList.add('active');
-            } else {
-                card.classList.remove('active');
-            }
+            if (checkbox.checked) card.classList.add('active');
+            else card.classList.remove('active');
         }
 
         function init() {
+            // 1. تشغيل مؤشر القوة في الأعلى
+            const meterScript = document.createElement('script');
+            meterScript.src = "https://s3.tradingview.com/external-embedding/embed-widget-forex-heat-map.js";
+            meterScript.async = true;
+            meterScript.innerHTML = JSON.stringify({
+                "width": "100%", "height": "100%", "currencies": ["EUR","USD","JPY","GBP","AUD","CAD","CHF","NZD"],
+                "isTransparent": true, "colorTheme": "dark", "locale": "ar"
+            });
+            document.getElementById('power_meter').appendChild(meterScript);
+
             const grid = document.getElementById('radar-grid');
             const controls = document.getElementById('filter-controls');
 
             pairs.forEach(p => {
-                // 1. توليد أزرار التصفية
-                controls.innerHTML += `
-                    <label class="checkbox-item">
-                        <input type="checkbox" id="check_${p.id}" onchange="toggleAsset('${p.id}')">
-                        ${p.n}
-                    </label>
-                `;
-
-                // 2. توليد البطاقات (مخفية افتراضياً)
+                controls.innerHTML += `<label class="checkbox-item"><input type="checkbox" id="check_${p.id}" onchange="toggleAsset('${p.id}')" checked> ${p.n}</label>`;
                 grid.innerHTML += `
-                    <div class="asset-card" id="card_${p.id}">
+                    <div class="asset-card active" id="card_${p.id}">
                         <div class="p-3 bg-gray-900 font-bold text-blue-400 border-b border-gray-800">${p.n}</div>
                         <div id="c_${p.id}" style="height:280px;"></div>
-                        <div id="t_${p.id}" style="height:400px;"></div>
+                        <div id="t_${p.id}" style="height:410px;"></div>
                     </div>`;
 
                 setTimeout(() => {
-                    new TradingView.widget({
-                        "autosize":true, "symbol":p.s, "interval":"1", "theme":"dark",
-                        "container_id":`c_${p.id}`, "hide_top_toolbar":true, "backgroundColor":"#0E141B"
-                    });
+                    new TradingView.widget({"autosize":true,"symbol":p.s,"interval":"1","theme":"dark","container_id":`c_${p.id}`,"hide_top_toolbar":true,"backgroundColor":"#0E141B"});
                     const s = document.createElement('script');
                     s.src = "https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js";
                     s.async = true;
-                    s.innerHTML = JSON.stringify({
-                        "interval":"1m", "width":"100%", "height":"100%", "symbol":p.s, "colorTheme":"dark", "locale":"ar"
-                    });
+                    s.innerHTML = JSON.stringify({"interval":"1m","width":"100%","height":"100%","symbol":p.s,"colorTheme":"dark","locale":"ar"});
                     document.getElementById(`t_${p.id}`).appendChild(s);
                 }, 1000);
             });
