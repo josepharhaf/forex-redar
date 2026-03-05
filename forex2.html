@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>رادار الفوركس والذهب والبيتكوين</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+    <style>
+        body { background-color: #05070A; color: white; font-family: sans-serif; }
+        .filter-btn { background: #151D27; border: 1px solid #1E293B; border-radius: 0.75rem; transition: 0.3s; color: #94A3B8; font-size: 11px; }
+        .filter-btn.active { border-color: #3B82F6; background: #1E40AF; color: white; box-shadow: 0 0 10px rgba(59, 130, 246, 0.4); }
+        .asset-card { background: #0E141B; border: 1px solid #1E293B; border-radius: 1.5rem; overflow: hidden; display: none; margin-bottom: 1.5rem; }
+        .asset-card.visible { display: block; }
+        .chart-box { height: 320px; width: 100%; }
+        .analysis-box { height: 400px; width: 100%; border-top: 1px solid #1E293B; }
+        .status-dot { width: 8px; height: 8px; background-color: #10B981; border-radius: 50%; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body class="p-4">
+
+    <div class="max-w-6xl mx-auto flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-xl font-black text-blue-500 italic uppercase">Pro Radar v6</h1>
+            <p class="text-[9px] text-gray-500 font-bold uppercase tracking-widest text-left">Real-Time Analysis</p>
+        </div>
+        <button id="master-sound" class="bg-gray-800 hover:bg-gray-700 text-yellow-500 text-[10px] px-5 py-2 rounded-xl font-bold border border-gray-700 transition-all flex items-center gap-2">
+            🔔 تفعيل التنبيهات الصوتية
+        </button>
+    </div>
+
+    <div class="max-w-6xl mx-auto mb-8 bg-[#0E141B] p-4 rounded-2xl border border-gray-800">
+        <h2 class="text-[10px] text-gray-500 mb-4 font-bold uppercase tracking-widest text-center">اختيار أزواج العملات (تصفية)</h2>
+        <div id="filter-container" class="flex flex-wrap justify-center gap-2">
+            </div>
+    </div>
+
+    <div id="radar-grid" class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
+        </div>
+
+    <script>
+        // قائمة العملات الشاملة (فوركس، ذهب، بيتكوين)
+        const assets = [
+            // الأساسيات
+            { symbol: "OANDA:XAUUSD", name: "الذهب GOLD", id: "gold" },
+            { symbol: "BINANCE:BTCUSDT", name: "بيتكوين BTC", id: "btc" },
+            // الفوركس الأساسي
+            { symbol: "FX:EURUSD", name: "EUR/USD", id: "eurusd" },
+            { symbol: "FX:GBPUSD", name: "GBP/USD", id: "gbpusd" },
+            { symbol: "FX:USDJPY", name: "USD/JPY", id: "usdjpy" },
+            { symbol: "FX:USDCHF", name: "USD/CHF", id: "usdchf" },
+            { symbol: "FX:AUDUSD", name: "AUD/USD", id: "audusd" },
+            { symbol: "FX:USDCAD", name: "USD/CAD", id: "usdcad" },
+            { symbol: "FX:NZDUSD", name: "NZD/USD", id: "nzdusd" },
+            // الفوركس المتقاطع (Crosses)
+            { symbol: "FX:EURGBP", name: "EUR/GBP", id: "eurgbp" },
+            { symbol: "FX:EURJPY", name: "EUR/JPY", id: "eurjpy" },
+            { symbol: "FX:GBPJPY", name: "GBP/JPY", id: "gbpjpy" }
+        ];
+
+        let soundEnabled = false;
+        let visibleAssets = ["OANDA:XAUUSD", "BINANCE:BTCUSDT", "FX:EURUSD"]; // العملات الظاهرة عند الفتح
+
+        function init() {
+            renderFilters();
+            renderCards();
+        }
+
+        function renderFilters() {
+            const container = document.getElementById('filter-container');
+            assets.forEach(asset => {
+                const btn = document.createElement('button');
+                btn.className = `filter-btn px-4 py-2 font-bold ${visibleAssets.includes(asset.symbol) ? 'active' : ''}`;
+                btn.innerText = asset.name;
+                btn.onclick = () => {
+                    if (visibleAssets.includes(asset.symbol)) {
+                        visibleAssets = visibleAssets.filter(a => a !== asset.symbol);
+                        btn.classList.remove('active');
+                    } else {
+                        visibleAssets.push(asset.symbol);
+                        btn.classList.add('active');
+                    }
+                    renderCards();
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function renderCards() {
+            const grid = document.getElementById('radar-grid');
+            grid.innerHTML = ''; 
+
+            assets.forEach(asset => {
+                if (visibleAssets.includes(asset.symbol)) {
+                    const card = document.createElement('div');
+                    card.className = "asset-card visible p-2";
+                    card.innerHTML = `
+                        <div class="p-3 flex justify-between items-center bg-[#151D27] rounded-t-xl border-b border-gray-800">
+                            <span class="font-bold text-sm text-blue-400">${asset.name}</span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[9px] text-gray-500">1m Analysis</span>
+                                <div class="status-dot"></div>
+                            </div>
+                        </div>
+                        <div id="chart_${asset.id}" class="chart-box"></div>
+                        <div id="sig_${asset.id}" class="analysis-box"></div>
+                    `;
+                    grid.appendChild(card);
+                    
+                    loadWidgets(asset);
+                }
+            });
+        }
+
+        function loadWidgets(asset) {
+            // 1. الرسم البياني الاحترافي
+            new TradingView.widget({
+                "autosize": true, "symbol": asset.symbol, "interval": "1", "timezone": "Etc/UTC",
+                "theme": "dark", "style": "1", "locale": "ar", "hide_top_toolbar": true,
+                "container_id": `chart_${asset.id}`, "backgroundColor": "#0E141B"
+            });
+
+            // 2. محلل المؤشرات (RSI, MACD, MA)
+            const script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js';
+            script.async = true;
+            script.innerHTML = JSON.stringify({
+                "interval": "1m", "width": "100%", "isTransparent": true, "height": "100%",
+                "symbol": asset.symbol, "showIntervalTabs": true, "locale": "ar", "colorTheme": "dark"
+            });
+            document.getElementById(`sig_${asset.id}`).appendChild(script);
+        }
+
+        document.getElementById('master-sound').onclick = function() {
+            soundEnabled = true;
+            this.innerText = "✅ نظام التنبيهات نشط";
+            this.className = "bg-green-900/40 text-green-400 text-[10px] px-5 py-2 rounded-xl font-bold border border-green-800 transition-all";
+        };
+
+        init();
+    </script>
+</body>
+</html>
