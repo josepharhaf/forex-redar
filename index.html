@@ -3,22 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>رادار القناص الشامل - فريم 1M</title>
+    <title>رادار بوكت اوبشن المطور</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
     <style>
         body { background-color: #05070A; color: white; font-family: sans-serif; }
-        .asset-card { background: #0E141B; border: 1px solid #1E293B; border-radius: 1.5rem; overflow: hidden; margin-bottom: 3rem; }
-        .signal-header { background: #151D27; padding: 1rem; border-bottom: 1px solid #1E293B; }
-        .chart-box { height: 350px; width: 100%; }
-        .analysis-box { height: 450px; width: 100%; border-top: 1px solid #1E293B; }
-        .btn-activate { background: linear-gradient(45deg, #1E40AF, #3B82F6); color: white; padding: 15px; border-radius: 12px; font-weight: bold; width: 100%; margin-bottom: 25px; cursor: pointer; border: none; }
+        .asset-card { background: #0E141B; border: 1px solid #1E293B; border-radius: 1.2rem; overflow: hidden; margin-bottom: 2rem; }
+        .btn-main { background: linear-gradient(45deg, #1E40AF, #3B82F6); padding: 15px; border-radius: 12px; font-weight: bold; width: 100%; margin-bottom: 10px; transition: 0.3s; }
+        .btn-main:active { transform: scale(0.98); opacity: 0.8; }
+        .status-box { background: #151D27; padding: 10px; border-radius: 8px; font-size: 12px; margin-bottom: 20px; border: 1px dashed #334155; text-align: center; }
     </style>
 </head>
-<body class="p-4">
+<body class="p-4 text-right">
 
     <div class="max-w-4xl mx-auto">
-        <button onclick="enableSystems()" class="btn-activate">🔔 تفعيل نظام الصوت والتنبيهات أعلى الشاشة</button>
+        <h1 class="text-center text-blue-500 font-black mb-4 italic">POCKET SNIPER V2</h1>
+        
+        <div id="status" class="status-box text-gray-400">
+            يرجى تفعيل النظام لبدء استلام إشارات 1M
+        </div>
+
+        <button onclick="setupNotifications()" class="btn-main">🔔 تفعيل الإشعارات والصوت</button>
+        <button onclick="testAlert()" class="btn-main" style="background: #10B981;">📢 تجربة جرس التنبيه</button>
+        
         <div id="radar-grid"></div>
     </div>
 
@@ -26,66 +33,68 @@
         const assets = [
             { symbol: "OANDA:XAUUSD", name: "الذهب GOLD", id: "gold" },
             { symbol: "BINANCE:BTCUSDT", name: "بيتكوين BTC", id: "btc" },
-            { symbol: "FX:EURUSD", name: "اليورو دولار EUR/USD", id: "eurusd" },
-            { symbol: "FX:GBPUSD", name: "الباوند دولار GBP/USD", id: "gbpusd" },
-            { symbol: "FX:USDJPY", name: "الدولار ين USD/JPY", id: "usdjpy" }
+            { symbol: "FX:EURUSD", name: "EUR/USD", id: "eurusd" },
+            { symbol: "FX:GBPUSD", name: "GBP/USD", id: "gbpusd" }
         ];
 
-        const audioAlert = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+        const alertSound = new Audio('https://notificationsounds.com/storage/sounds/file-sounds-1150-pristine.mp3');
 
-        function enableSystems() {
-            Notification.requestPermission().then(permission => {
-                if (permission === "granted") {
-                    new Notification("النظام مفعل", { body: "ستصلك إشعارات الصفقات القوية هنا" });
-                    audioAlert.play();
-                }
-            });
+        // وظيفة تفعيل النظام
+        async function setupNotifications() {
+            const statusDiv = document.getElementById('status');
+            
+            if (!("Notification" in window)) {
+                alert("متصفحك لا يدعم الإشعارات");
+                return;
+            }
+
+            let permission = await Notification.requestPermission();
+            
+            if (permission === "granted") {
+                statusDiv.innerHTML = "✅ النظام يعمل: ستصلك تنبيهات أعلى الشاشة";
+                statusDiv.style.color = "#10B981";
+                new Notification("تم التفعيل!", { body: "رادار بوكت اوبشن يراقب السوق الآن" });
+            } else {
+                statusDiv.innerHTML = "❌ الإشعارات محظورة! يرجى تفعيلها من إعدادات المتصفح";
+                statusDiv.style.color = "#EF4444";
+            }
+        }
+
+        // وظيفة تجربة الصوت
+        function testAlert() {
+            alertSound.play().catch(e => alert("اضغط على تفعيل أولاً لتشغيل الصوت"));
+            if(Notification.permission === "granted") {
+                new Notification("تجربة تنبيه", { body: "هكذا ستظهر لك إشارات البيع والشراء" });
+            }
         }
 
         function init() {
             const grid = document.getElementById('radar-grid');
             assets.forEach(asset => {
-                const card = document.createElement('div');
-                card.className = "asset-card";
-                card.innerHTML = `
-                    <div class="signal-header flex justify-between items-center">
-                        <span class="font-bold text-blue-400 text-lg">${asset.name}</span>
-                        <span class="bg-blue-900/40 text-blue-400 px-3 py-1 rounded-full text-[10px] font-bold">فريم 1 دقيقة</span>
+                grid.innerHTML += `
+                    <div class="asset-card">
+                        <div class="p-3 bg-[#151D27] font-bold text-blue-400">${asset.name}</div>
+                        <div id="chart_${asset.id}" style="height:300px;"></div>
+                        <div id="sig_${asset.id}" style="height:400px;"></div>
                     </div>
-                    <div id="chart_${asset.id}" class="chart-box"></div>
-                    <div id="sig_${asset.id}" class="analysis-box"></div>
                 `;
-                grid.appendChild(card);
                 
-                // 1. إعادة الشارت (الشموع اليابانية)
-                new TradingView.widget({
-                    "autosize": true,
-                    "symbol": asset.symbol,
-                    "interval": "1",
-                    "theme": "dark",
-                    "style": "1",
-                    "locale": "ar",
-                    "container_id": `chart_${asset.id}`,
-                    "hide_top_toolbar": true,
-                    "backgroundColor": "#0E141B"
-                });
+                setTimeout(() => {
+                    new TradingView.widget({
+                        "autosize": true, "symbol": asset.symbol, "interval": "1", "theme": "dark",
+                        "style": "1", "locale": "ar", "container_id": `chart_${asset.id}`,
+                        "hide_top_toolbar": true, "backgroundColor": "#0E141B"
+                    });
 
-                // 2. المحلل التقني (العدادات)
-                const script = document.createElement('script');
-                script.type = 'text/javascript';
-                script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js';
-                script.async = true;
-                script.innerHTML = JSON.stringify({
-                    "interval": "1m",
-                    "width": "100%",
-                    "isTransparent": true,
-                    "height": "100%",
-                    "symbol": asset.symbol,
-                    "showIntervalTabs": true,
-                    "locale": "ar",
-                    "colorTheme": "dark"
-                });
-                document.getElementById(`sig_${asset.id}`).appendChild(script);
+                    const script = document.createElement('script');
+                    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js';
+                    script.async = true;
+                    script.innerHTML = JSON.stringify({
+                        "interval": "1m", "width": "100%", "isTransparent": true, "height": "100%",
+                        "symbol": asset.symbol, "showIntervalTabs": true, "locale": "ar", "colorTheme": "dark"
+                    });
+                    document.getElementById(`sig_${asset.id}`).appendChild(script);
+                }, 500);
             });
         }
 
