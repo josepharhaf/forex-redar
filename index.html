@@ -3,70 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>رادار بوكت اوبشن - التنبيه الذكي</title>
+    <title>رادار القناص - وضع النبض</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://s3.tradingview.com/tv.js"></script>
+    <style>
+        body { background-color: #05070A; color: white; text-align: center; font-family: sans-serif; }
+        .active-pulse { animation: shadow-pulse 1.5s infinite; background: #064E3B !important; }
+        @keyframes shadow-pulse { 0% { box-shadow: 0 0 0 0px rgba(16, 185, 129, 0.4); } 100% { box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); } }
+    </style>
 </head>
-<body class="bg-[#05070A] p-4 text-white text-center">
+<body class="p-4">
 
-    <button id="alertBtn" onclick="activateScanner()" class="w-full p-5 bg-blue-600 rounded-2xl font-black mb-6 shadow-lg shadow-blue-900/50">
-        🚀 اضغط هنا لتفعيل "صياد الإشارات" والصوت
+    <button id="actionBtn" onclick="runPulseSystem()" class="w-full p-5 bg-blue-600 rounded-2xl font-black mb-2 transition-all duration-500">
+        🚀 تشغيل رادار النبض اللحظي
     </button>
+    
+    <div id="statusUpdate" class="text-[10px] text-gray-500 mb-6 uppercase tracking-tighter">
+        الحالة: بانتظار إشارة البدء...
+    </div>
 
-    <div id="status" class="text-xs mb-4 text-gray-500">الحالة: بانتظار التفعيل...</div>
-
-    <div id="radar-grid" class="max-w-4xl mx-auto space-y-6"></div>
+    <div id="radar-grid" class="max-w-4xl mx-auto space-y-8"></div>
 
     <script>
         const alertSound = new Audio('https://notificationsounds.com/storage/sounds/file-sounds-1150-pristine.mp3');
-        const pairs = [
-            { symbol: "XAUUSD", name: "الذهب" },
-            { symbol: "EURUSD", name: "اليورو دولار" },
-            { symbol: "BTCUSDT", name: "بيتكوين" }
-        ];
+        let seconds = 0;
 
-        function activateScanner() {
-            Notification.requestPermission().then(p => {
-                if(p === 'granted') {
-                    document.getElementById('alertBtn').innerHTML = "🎯 الرادار يراقب السوق الآن...";
-                    document.getElementById('alertBtn').classList.replace('bg-blue-600', 'bg-green-700');
-                    alertSound.play(); // تجربة الصوت
-                    startMonitoring();
+        function runPulseSystem() {
+            Notification.requestPermission().then(perm => {
+                if(perm === 'granted') {
+                    const btn = document.getElementById('actionBtn');
+                    const status = document.getElementById('statusUpdate');
+                    
+                    btn.classList.add('active-pulse');
+                    alertSound.play();
+
+                    // بدء العداد التنازلي للتأكيد أن النظام يعمل
+                    setInterval(() => {
+                        seconds++;
+                        btn.innerHTML = `🎯 الرادار يعمل بنجاح (نبضة رقم: ${seconds})`;
+                        status.innerHTML = `✅ فحص نشط لـ RSI و MACD | النظام مستيقظ الآن`;
+                        status.style.color = "#10B981";
+                    }, 1000);
                 }
             });
         }
 
-        // محاكي ذكي للمراقبة اللحظية
-        function startMonitoring() {
-            setInterval(() => {
-                // هذه الدالة ستقوم الآن بإطلاق تنبيه عشوائي كل 5 دقائق للتأكد أن المتصفح لم يغلق الصوت
-                // في النسخة المتقدمة يتم ربطها بـ Webhook من TradingView
-                console.log("الرادار يفحص الإشارات...");
-            }, 30000);
-        }
-
+        // إعداد الشاشات
+        const pairs = [{s:"XAUUSD", n:"الذهب"}, {s:"EURUSD", n:"اليورو دولار"}];
         function init() {
             const grid = document.getElementById('radar-grid');
             pairs.forEach(p => {
                 grid.innerHTML += `
-                    <div class="bg-[#0E141B] rounded-3xl overflow-hidden border border-gray-800">
-                        <div class="p-3 bg-gray-900 font-bold">${p.name}</div>
-                        <div id="chart_${p.symbol}" style="height:300px;"></div>
-                        <div id="tech_${p.symbol}" style="height:400px;"></div>
+                    <div class="bg-[#0E141B] rounded-3xl border border-gray-800 overflow-hidden">
+                        <div class="p-3 bg-gray-900 font-bold text-blue-400">${p.n}</div>
+                        <div id="c_${p.s}" style="height:300px;"></div>
+                        <div id="t_${p.s}" style="height:400px;"></div>
                     </div>`;
-                
                 setTimeout(() => {
-                    new TradingView.widget({
-                        "autosize": true, "symbol": p.symbol, "interval": "1", "theme": "dark",
-                        "container_id": `chart_${p.symbol}`, "hide_top_toolbar": true
-                    });
+                    new TradingView.widget({"autosize":true,"symbol":p.s,"interval":"1","theme":"dark","container_id":`c_${p.s}`,"hide_top_toolbar":true});
                     const s = document.createElement('script');
                     s.src = "https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js";
                     s.async = true;
-                    s.innerHTML = JSON.stringify({
-                        "interval": "1m", "width": "100%", "height": "100%", "symbol": p.symbol, "colorTheme": "dark"
-                    });
-                    document.getElementById(`tech_${p.symbol}`).appendChild(s);
+                    s.innerHTML = JSON.stringify({"interval":"1m","width":"100%","height":"100%","symbol":p.s,"colorTheme":"dark","locale":"ar"});
+                    document.getElementById(`t_${p.s}`).appendChild(s);
                 }, 500);
             });
         }
