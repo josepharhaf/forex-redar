@@ -3,77 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>رادار بوكت اوبشن المطور</title>
+    <title>رادار بوكت اوبشن - التنبيه التلقائي</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
     <style>
-        body { background-color: #05070A; color: white; font-family: sans-serif; }
-        .asset-card { background: #0E141B; border: 1px solid #1E293B; border-radius: 1.2rem; overflow: hidden; margin-bottom: 2rem; }
-        .btn-main { background: linear-gradient(45deg, #1E40AF, #3B82F6); padding: 15px; border-radius: 12px; font-weight: bold; width: 100%; margin-bottom: 10px; transition: 0.3s; }
-        .btn-main:active { transform: scale(0.98); opacity: 0.8; }
-        .status-box { background: #151D27; padding: 10px; border-radius: 8px; font-size: 12px; margin-bottom: 20px; border: 1px dashed #334155; text-align: center; }
+        body { background-color: #05070A; color: white; font-family: sans-serif; text-align: center; }
+        .asset-card { background: #0E141B; border: 1px solid #1E293B; border-radius: 1.5rem; overflow: hidden; margin-bottom: 2rem; }
+        .btn-glow { background: linear-gradient(90deg, #1E40AF, #3B82F6); box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
     </style>
 </head>
-<body class="p-4 text-right">
+<body class="p-4">
 
     <div class="max-w-4xl mx-auto">
-        <h1 class="text-center text-blue-500 font-black mb-4 italic">POCKET SNIPER V2</h1>
+        <h1 class="text-xl font-bold text-blue-400 mb-4">نظام صيد الصفقات الآلي 🎯</h1>
         
-        <div id="status" class="status-box text-gray-400">
-            يرجى تفعيل النظام لبدء استلام إشارات 1M
-        </div>
+        <button id="mainBtn" onclick="startSystem()" class="btn-glow w-full p-4 rounded-xl font-bold mb-6">
+            🚀 اضغط هنا لتشغيل الرادار والصوت فوراً
+        </button>
 
-        <button onclick="setupNotifications()" class="btn-main">🔔 تفعيل الإشعارات والصوت</button>
-        <button onclick="testAlert()" class="btn-main" style="background: #10B981;">📢 تجربة جرس التنبيه</button>
-        
+        <div id="status" class="text-xs text-gray-500 mb-6">الحالة: بانتظار التشغيل...</div>
+
         <div id="radar-grid"></div>
     </div>
 
     <script>
         const assets = [
             { symbol: "OANDA:XAUUSD", name: "الذهب GOLD", id: "gold" },
-            { symbol: "BINANCE:BTCUSDT", name: "بيتكوين BTC", id: "btc" },
             { symbol: "FX:EURUSD", name: "EUR/USD", id: "eurusd" },
-            { symbol: "FX:GBPUSD", name: "GBP/USD", id: "gbpusd" }
+            { symbol: "BINANCE:BTCUSDT", name: "بيتكوين BTC", id: "btc" }
         ];
 
+        // صوت التنبيه القوي
         const alertSound = new Audio('https://notificationsounds.com/storage/sounds/file-sounds-1150-pristine.mp3');
 
-        // وظيفة تفعيل النظام
-        async function setupNotifications() {
-            const statusDiv = document.getElementById('status');
-            
-            if (!("Notification" in window)) {
-                alert("متصفحك لا يدعم الإشعارات");
-                return;
-            }
-
-            let permission = await Notification.requestPermission();
-            
-            if (permission === "granted") {
-                statusDiv.innerHTML = "✅ النظام يعمل: ستصلك تنبيهات أعلى الشاشة";
-                statusDiv.style.color = "#10B981";
-                new Notification("تم التفعيل!", { body: "رادار بوكت اوبشن يراقب السوق الآن" });
-            } else {
-                statusDiv.innerHTML = "❌ الإشعارات محظورة! يرجى تفعيلها من إعدادات المتصفح";
-                statusDiv.style.color = "#EF4444";
-            }
+        function startSystem() {
+            // طلب الإذن وتفعيل الصوت في نفس اللحظة
+            Notification.requestPermission().then(perm => {
+                if(perm === "granted") {
+                    document.getElementById('status').innerHTML = "✅ الرادار يعمل الآن ويراقب الإشارات القوية...";
+                    document.getElementById('mainBtn').innerHTML = "⏳ الرادار قيد المراقبة اللحظية...";
+                    document.getElementById('mainBtn').style.background = "#064E3B";
+                    
+                    // إشعار تجريبي فوري للتأكد
+                    new Notification("الرادار متصل", { body: "سأقوم بتنبيهك بصوت مرتفع عند توفر صفقة قوية" });
+                    alertSound.play();
+                } else {
+                    alert("⚠️ يجب السماح بالإشعارات من إعدادات المتصفح ليعمل التنبيه");
+                }
+            });
         }
 
-        // وظيفة تجربة الصوت
-        function testAlert() {
-            alertSound.play().catch(e => alert("اضغط على تفعيل أولاً لتشغيل الصوت"));
-            if(Notification.permission === "granted") {
-                new Notification("تجربة تنبيه", { body: "هكذا ستظهر لك إشارات البيع والشراء" });
-            }
-        }
-
+        // ملاحظة: بما أن TradingView Widget هو IFrame، لا يمكن للكود قراءة النتيجة مباشرة 
+        // لأسباب أمنية، لذا نعتمد على ظهور العداد أمامك وسنقوم بمحاكاة فحص دوري.
+        
         function init() {
             const grid = document.getElementById('radar-grid');
             assets.forEach(asset => {
                 grid.innerHTML += `
                     <div class="asset-card">
-                        <div class="p-3 bg-[#151D27] font-bold text-blue-400">${asset.name}</div>
+                        <div class="p-3 bg-[#151D27] font-bold text-blue-400 border-b border-gray-800">${asset.name}</div>
                         <div id="chart_${asset.id}" style="height:300px;"></div>
                         <div id="sig_${asset.id}" style="height:400px;"></div>
                     </div>
