@@ -3,25 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>رادار القناص - تنبيهات صوتية</title>
+    <title>رادار القناص الشامل - فريم 1M</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
     <style>
         body { background-color: #05070A; color: white; font-family: sans-serif; }
-        .asset-card { background: #0E141B; border: 1px solid #1E293B; border-radius: 1.2rem; overflow: hidden; margin-bottom: 2.5rem; }
-        .btn-activate { background: linear-gradient(to right, #1E40AF, #3B82F6); color: white; padding: 12px; border-radius: 12px; font-weight: bold; width: 100%; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(30, 64, 175, 0.4); }
+        .asset-card { background: #0E141B; border: 1px solid #1E293B; border-radius: 1.5rem; overflow: hidden; margin-bottom: 3rem; }
+        .signal-header { background: #151D27; padding: 1rem; border-bottom: 1px solid #1E293B; }
+        .chart-box { height: 350px; width: 100%; }
+        .analysis-box { height: 450px; width: 100%; border-top: 1px solid #1E293B; }
+        .btn-activate { background: linear-gradient(45deg, #1E40AF, #3B82F6); color: white; padding: 15px; border-radius: 12px; font-weight: bold; width: 100%; margin-bottom: 25px; cursor: pointer; border: none; }
     </style>
 </head>
 <body class="p-4">
 
     <div class="max-w-4xl mx-auto">
-        <button onclick="enableAllSystems()" class="btn-activate">🔊 تفعيل نظام التنبيهات والصوت</button>
-        
+        <button onclick="enableSystems()" class="btn-activate">🔔 تفعيل نظام الصوت والتنبيهات أعلى الشاشة</button>
         <div id="radar-grid"></div>
     </div>
 
     <script>
-        // قائمة الأصول الأساسية
         const assets = [
             { symbol: "OANDA:XAUUSD", name: "الذهب GOLD", id: "gold" },
             { symbol: "BINANCE:BTCUSDT", name: "بيتكوين BTC", id: "btc" },
@@ -30,27 +31,15 @@
             { symbol: "FX:USDJPY", name: "الدولار ين USD/JPY", id: "usdjpy" }
         ];
 
-        // صوت التنبيه (تردد احترافي قصير)
         const audioAlert = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
 
-        function enableAllSystems() {
-            // تفعيل الإشعارات
+        function enableSystems() {
             Notification.requestPermission().then(permission => {
                 if (permission === "granted") {
-                    new Notification("النظام يعمل", { body: "تم تفعيل الصوت والإشعارات بنجاح" });
-                    audioAlert.play(); // تجربة الصوت عند التفعيل
+                    new Notification("النظام مفعل", { body: "ستصلك إشعارات الصفقات القوية هنا" });
+                    audioAlert.play();
                 }
             });
-        }
-
-        // دالة إرسال التنبيه الصوتي والمرئي
-        function triggerAlert(assetName, direction) {
-            if (Notification.permission === "granted") {
-                new Notification(`إشارة قوية: ${assetName}`, {
-                    body: `الاتجاه: ${direction} | المدة: 1-2 دقيقة`,
-                });
-                audioAlert.play(); // تشغيل الصوت
-            }
         }
 
         function init() {
@@ -59,21 +48,42 @@
                 const card = document.createElement('div');
                 card.className = "asset-card";
                 card.innerHTML = `
-                    <div class="p-4 bg-[#151D27] flex justify-between">
-                        <span class="font-bold text-blue-400">${asset.name}</span>
-                        <span class="text-[10px] text-gray-500 font-bold">1M ANALYSIS</span>
+                    <div class="signal-header flex justify-between items-center">
+                        <span class="font-bold text-blue-400 text-lg">${asset.name}</span>
+                        <span class="bg-blue-900/40 text-blue-400 px-3 py-1 rounded-full text-[10px] font-bold">فريم 1 دقيقة</span>
                     </div>
-                    <div id="sig_${asset.id}" style="height: 420px;"></div>
+                    <div id="chart_${asset.id}" class="chart-box"></div>
+                    <div id="sig_${asset.id}" class="analysis-box"></div>
                 `;
                 grid.appendChild(card);
                 
+                // 1. إعادة الشارت (الشموع اليابانية)
+                new TradingView.widget({
+                    "autosize": true,
+                    "symbol": asset.symbol,
+                    "interval": "1",
+                    "theme": "dark",
+                    "style": "1",
+                    "locale": "ar",
+                    "container_id": `chart_${asset.id}`,
+                    "hide_top_toolbar": true,
+                    "backgroundColor": "#0E141B"
+                });
+
+                // 2. المحلل التقني (العدادات)
                 const script = document.createElement('script');
                 script.type = 'text/javascript';
                 script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js';
                 script.async = true;
                 script.innerHTML = JSON.stringify({
-                    "interval": "1m", "width": "100%", "isTransparent": true, "height": "100%",
-                    "symbol": asset.symbol, "showIntervalTabs": false, "locale": "ar", "colorTheme": "dark"
+                    "interval": "1m",
+                    "width": "100%",
+                    "isTransparent": true,
+                    "height": "100%",
+                    "symbol": asset.symbol,
+                    "showIntervalTabs": true,
+                    "locale": "ar",
+                    "colorTheme": "dark"
                 });
                 document.getElementById(`sig_${asset.id}`).appendChild(script);
             });
