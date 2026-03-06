@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>رادار الفوركس الشامل V3</title>
+    <title>رادار القناص الاحترافي - نظام العمليات المتكامل</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://s3.tradingview.com/tv.js"></script>
     <style>
@@ -13,31 +13,36 @@
         .asset-card.active { display: block; }
         .checkbox-item { display: inline-flex; align-items: center; background: #151D27; padding: 5px 12px; border-radius: 8px; margin: 4px; border: 1px solid #1E293B; cursor: pointer; font-size: 10px; font-weight: bold; }
         .checkbox-item input { margin-left: 6px; }
-        .active-pulse { animation: shadow-pulse 1.5s infinite; background: #064E3B !important; }
+        #candleTimer { font-size: 1.2rem; font-weight: 900; transition: 0.3s; }
+        .pulse-btn { animation: shadow-pulse 1.5s infinite; background: #064E3B !important; }
         @keyframes shadow-pulse { 0% { box-shadow: 0 0 0 0px rgba(16, 185, 129, 0.4); } 100% { box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); } }
     </style>
 </head>
 <body class="p-4">
 
+    <div class="max-w-4xl mx-auto mb-4 sticky top-0 z-50">
+        <div id="candleTimer" class="bg-black/80 backdrop-blur-md p-3 rounded-xl border border-gray-800 mb-2">
+            ⏳ بانتظار تشغيل العداد...
+        </div>
+        <button id="actionBtn" onclick="runPulseSystem()" class="w-full p-4 bg-blue-600 rounded-xl font-black shadow-lg">
+            🚀 تشغيل نظام المراقبة اللحظية
+        </button>
+    </div>
+
     <div class="max-w-4xl mx-auto mb-6">
-        <div class="bg-gray-900 p-2 rounded-t-xl text-[10px] font-bold text-blue-400">خريطة قوة العملات الحرارية</div>
-        <div id="power_meter" style="height: 150px; width: 100%;"></div>
+        <div class="bg-gray-900 p-2 rounded-t-xl text-[10px] font-bold text-blue-400">خريطة قوة العملات (Heat Map)</div>
+        <div id="power_meter" style="height: 160px; width: 100%;"></div>
     </div>
 
     <div class="filter-section max-w-4xl mx-auto">
-        <p class="text-[10px] text-gray-500 mb-3 uppercase font-bold">تصفية قائمة الفوركس الكاملة:</p>
+        <p class="text-[10px] text-gray-500 mb-3 uppercase font-bold">تصفية الأزواج (مفعلة تلقائياً ✅):</p>
         <div id="filter-controls" class="flex flex-wrap justify-center"></div>
     </div>
 
-    <button id="actionBtn" onclick="runPulseSystem()" class="max-w-4xl w-full p-4 bg-blue-600 rounded-xl font-black mb-6 transition-all">
-        🚀 بدء مراقبة النبض اللحظي
-    </button>
-    
     <div id="radar-grid" class="max-w-4xl mx-auto"></div>
 
     <script>
-        let seconds = 0;
-        // القائمة الكاملة لجميع الأزواج الهامة
+        let secondsPassed = 0;
         const pairs = [
             {s:"OANDA:XAUUSD", n:"الذهب GOLD", id:"gold"},
             {s:"BINANCE:BTCUSDT", n:"بيتكوين BTC", id:"btc"},
@@ -56,8 +61,29 @@
         ];
 
         function runPulseSystem() {
-            document.getElementById('actionBtn').classList.add('active-pulse');
-            setInterval(() => { seconds++; document.getElementById('actionBtn').innerHTML = `🎯 النظام يعمل (نبضة: ${seconds})`; }, 1000);
+            document.getElementById('actionBtn').classList.add('pulse-btn');
+            
+            // بدء عداد الثواني التراكمي + عداد الشمعة التنازلي
+            setInterval(() => {
+                secondsPassed++;
+                document.getElementById('actionBtn').innerHTML = `🎯 النظام يعمل (نبضة: ${secondsPassed})`;
+                
+                // حساب الوقت المتبقي لشمعة الدقيقة
+                const now = new Date();
+                const timeLeft = 60 - now.getSeconds();
+                const timerDisplay = document.getElementById('candleTimer');
+                
+                timerDisplay.innerHTML = `⏳ المتبقي للشمعة: ${timeLeft} ثانية`;
+                
+                // تغيير اللون للتحذير
+                if(timeLeft <= 10) {
+                    timerDisplay.style.color = "#FF4444"; // أحمر
+                    timerDisplay.style.borderColor = "#FF4444";
+                } else {
+                    timerDisplay.style.color = "#00FF88"; // أخضر
+                    timerDisplay.style.borderColor = "#1E293B";
+                }
+            }, 1000);
         }
 
         function toggleAsset(id) {
@@ -82,14 +108,7 @@
             const controls = document.getElementById('filter-controls');
 
             pairs.forEach((p, index) => {
-                // توليد أزرار التصفية (كلها مفعلة تلقائياً ✅)
-                controls.innerHTML += `
-                    <label class="checkbox-item">
-                        <input type="checkbox" id="check_${p.id}" onchange="toggleAsset('${p.id}')" checked>
-                        ${p.n}
-                    </label>`;
-
-                // توليد البطاقات (كلها ظاهرة تلقائياً)
+                controls.innerHTML += `<label class="checkbox-item"><input type="checkbox" id="check_${p.id}" onchange="toggleAsset('${p.id}')" checked> ${p.n}</label>`;
                 grid.innerHTML += `
                     <div class="asset-card active" id="card_${p.id}">
                         <div class="p-3 bg-gray-900 font-bold text-blue-400 border-b border-gray-800">${p.n}</div>
@@ -97,7 +116,6 @@
                         <div id="t_${p.id}" style="height:410px;"></div>
                     </div>`;
 
-                // تأخير بسيط عند التحميل لتجنب تعليق المتصفح
                 setTimeout(() => {
                     new TradingView.widget({"autosize":true,"symbol":p.s,"interval":"1","theme":"dark","container_id":`c_${p.id}`,"hide_top_toolbar":true,"backgroundColor":"#0E141B"});
                     const s = document.createElement('script');
