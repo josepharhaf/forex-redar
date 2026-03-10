@@ -3,27 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>رادار أرهاف - الإرسال التلقائي</title>
+    <title>رادار أرهاف الرقمي</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://s3.tradingview.com/tv.js"></script>
     <style>
         body { background-color: #05070A; color: white; text-align: center; font-family: sans-serif; }
         .filter-section { background: #0E141B; border: 1px solid #1E293B; border-radius: 1rem; padding: 15px; margin-bottom: 20px; }
         .asset-card { background: #0E141B; border: 1px solid #1E293B; border-radius: 1.5rem; overflow: hidden; margin-bottom: 2.5rem; }
-        .checkbox-item { display: inline-flex; align-items: center; background: #151D27; padding: 5px 12px; border-radius: 8px; margin: 4px; border: 1px solid #1E293B; cursor: pointer; font-size: 11px; }
+        .score-badge { padding: 2px 8px; border-radius: 5px; font-size: 12px; font-weight: bold; }
+        .buy-color { background: #00897b; color: white; }
+        .sell-color { background: #ff5252; color: white; }
+        .neutral-color { background: #546e7a; color: white; }
     </style>
 </head>
 <body class="p-4">
 
-    <h1 class="text-blue-500 font-black mb-4 italic text-lg uppercase">ARHAF RADAR PRO V65.3</h1>
+    <h1 class="text-blue-500 font-black mb-4 italic text-lg uppercase">ARHAF DIGITAL RADAR</h1>
 
     <div class="filter-section max-w-4xl mx-auto shadow-2xl">
-        <p class="text-[10px] text-gray-500 mb-2 uppercase font-bold">حالة محرك الاكتساح: <span id="engine-status" class="text-red-500">متوقف 🛑</span></p>
+        <p class="text-[10px] text-gray-500 mb-2 uppercase font-bold">المحرك الرقمي اللحظي:</p>
         <div id="filter-controls" class="flex flex-wrap justify-center"></div>
     </div>
 
     <button id="actionBtn" onclick="activateEngine()" class="max-w-4xl w-full p-4 bg-blue-600 rounded-xl font-bold mb-6 hover:bg-blue-500 transition-all shadow-lg active:scale-95">
-        🚀 تفعيل محرك الإرسال اللحظي لـ Arhaf
+        🚀 تشغيل الرادار الرقمي التلقائي
     </button>
     
     <div id="radar-grid" class="max-w-4xl mx-auto"></div>
@@ -38,17 +41,12 @@
             {s:"FX:GBPUSD", n:"GBP/USD", id:"gbpusd", ticker:"FX:GBPUSD"},
             {s:"FX:USDJPY", n:"USD/JPY", id:"usdjpy", ticker:"FX:USDJPY"},
             {s:"FX:AUDUSD", n:"AUD/USD", id:"audusd", ticker:"FX:AUDUSD"},
-            {s:"FX:USDCAD", n:"USD/CAD", id:"usdcad", ticker:"FX:USDCAD"},
-            {s:"FX:EURJPY", n:"EUR/JPY", id:"eurjpy", ticker:"FX:EURJPY"},
-            {s:"FX:GBPJPY", n:"GBP/JPY", id:"gbpjpy", ticker:"FX:GBPJPY"},
-            {s:"FX:EURCAD", n:"EUR/CAD", id:"eurcad", ticker:"FX:EURCAD"},
-            {s:"FX:AUDJPY", n:"AUD/JPY", id:"audjpy", ticker:"FX:AUDJPY"}
+            {s:"FX:USDCAD", n:"USD/CAD", id:"usdcad", ticker:"FX:USDCAD"}
         ];
 
         let isEngineActive = false;
         let lastAlertTime = {};
 
-        // محرك الفحص البرمجي العميق
         async function checkSignals() {
             if (!isEngineActive) return;
 
@@ -57,47 +55,47 @@
                     method: 'POST',
                     body: JSON.stringify({
                         "symbols": { "tickers": pairs.map(p => p.ticker) },
-                        "columns": ["Recommend.All", "status"]
+                        "columns": ["Recommend.All"]
                     })
                 });
                 const data = await response.json();
 
                 data.data.forEach((result, index) => {
-                    const score = result.d[0]; // القيمة الرقمية للمؤشرات
+                    const score = parseFloat(result.d[0]).toFixed(2); // تحويل النتيجة لرقم عشري
+                    const pairId = pairs[index].id;
                     const pairName = pairs[index].n;
 
-                    // إشارة بيع قوي (أقل من -0.5) أو شراء قوي (أعلى من 0.5)
+                    // تحديث الرقم في الصفحة
+                    const badge = document.getElementById(`score_${pairId}`);
+                    if (badge) {
+                        badge.innerHTML = `الزخم: ${score}`;
+                        badge.className = `score-badge ${score >= 0.5 ? 'buy-color' : (score <= -0.5 ? 'sell-color' : 'neutral-color')}`;
+                    }
+
+                    // إرسال تنبيه إذا تجاوزت القوة 0.5 (شراء) أو -0.5 (بيع)
                     if (score <= -0.5) {
-                        sendTeleAlert(pairName, "🔴 بيع قوي (Strong Sell)");
+                        sendTeleAlert(pairName, score, "🔴 بيع قوي");
                     } else if (score >= 0.5) {
-                        sendTeleAlert(pairName, "🟢 شراء قوي (Strong Buy)");
+                        sendTeleAlert(pairName, score, "🟢 شراء قوي");
                     }
                 });
-            } catch (e) { console.error("Scanning Error..."); }
+            } catch (e) { console.error("API Error"); }
         }
 
-        function sendTeleAlert(pairName, signalType) {
+        function sendTeleAlert(name, score, type) {
             const now = Date.now();
-            // منع التكرار لكل زوج لمدة 3 دقائق
-            if (lastAlertTime[pairName] && (now - lastAlertTime[pairName] < 180000)) return;
+            if (lastAlertTime[name] && (now - lastAlertTime[name] < 180000)) return;
 
-            const message = `🚨 <b>إشارة اكتساح Arhaf!</b>\n\n💰 الزوج: <b>${pairName}</b>\n⚡ الحالة: <b>${signalType}</b>\n⏱ الفريم: 1 دقيقة\n\n🛡 <i>تم التأكيد برمجياً عبر 26 مؤشر</i>`;
-            
+            const message = `📊 <b>إشارة رقمية مؤكدة!</b>\n\n💰 الزوج: <b>${name}</b>\n⚡ القوة الرقمية: <b>${score}</b>\n🎯 الحالة: <b>${type}</b>\n\n🛡 <i>تم التحقق من 26 مؤشر فني</i>`;
             fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(message)}&parse_mode=HTML`);
-            lastAlertTime[pairName] = now;
+            lastAlertTime[name] = now;
         }
 
         function activateEngine() {
             isEngineActive = true;
-            document.getElementById('actionBtn').classList.replace('bg-blue-600', 'bg-green-700');
-            document.getElementById('actionBtn').innerHTML = "🎯 المحرك نشط ويرسل التنبيهات الآن...";
-            document.getElementById('engine-status').innerHTML = "نشط ويعمل برمجياً ✅";
-            
-            // فحص كل 15 ثانية لضمان السرعة
-            setInterval(checkSignals, 15000);
-            
-            const initMsg = "🚀 <b>تم تفعيل محرك الاكتساح بنجاح!</b>\nسأقوم بإرسال إشعارات (Strong Buy/Sell) فور تحققها برمجياً.";
-            fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(initMsg)}&parse_mode=HTML`);
+            document.getElementById('actionBtn').className = "max-w-4xl w-full p-4 bg-green-700 rounded-xl font-bold mb-6 transition-all";
+            document.getElementById('actionBtn').innerHTML = "🎯 المحرك الرقمي يراقب الأسواق...";
+            setInterval(checkSignals, 10000); // فحص سريع كل 10 ثوانٍ
         }
 
         function init() {
@@ -107,7 +105,10 @@
                 controls.innerHTML += `<label class="checkbox-item"><input type="checkbox" id="check_${p.id}" checked> ${p.n}</label>`;
                 grid.innerHTML += `
                     <div class="asset-card" id="card_${p.id}">
-                        <div class="p-2 bg-gray-900 font-bold text-blue-400 border-b border-gray-800 text-sm">${p.n}</div>
+                        <div class="p-2 bg-gray-900 font-bold text-blue-400 border-b border-gray-800 text-sm flex justify-between px-4">
+                            <span>${p.n}</span>
+                            <span id="score_${p.id}" class="score-badge neutral-color">جاري الحساب...</span>
+                        </div>
                         <div id="c_${p.id}" style="height:250px;"></div>
                         <div id="t_${p.id}" style="height:380px;"></div>
                     </div>`;
