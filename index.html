@@ -3,61 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>رادار جوزيف الاحترافي</title>
+    <title>رادار جوزيف V63.9 - الاكتساح</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0b0e11; color: white; text-align: center; margin: 0; padding: 20px; }
-        .container { max-width: 500px; margin: auto; }
-        .card { background: #1e2329; border-radius: 20px; padding: 30px; border: 2px solid #333; margin-top: 50px; transition: 0.5s; }
-        .buy-alert { border-color: #00ff88; box-shadow: 0 0 30px rgba(0, 255, 136, 0.2); }
-        .sell-alert { border-color: #ff4d4d; box-shadow: 0 0 30px rgba(255, 77, 77, 0.2); }
-        .pair { font-size: 35px; font-weight: bold; letter-spacing: 2px; }
-        .price { font-size: 45px; margin: 20px 0; font-family: monospace; }
-        .direction { font-size: 24px; font-weight: bold; padding: 10px; border-radius: 10px; }
-        .btn-pocket { background: #f0b90b; color: black; padding: 15px 40px; border-radius: 10px; text-decoration: none; display: inline-block; margin-top: 30px; font-weight: bold; font-size: 20px; }
-        .footer { margin-top: 40px; color: #848e9c; font-size: 14px; }
+        body { background: #0b0e11; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; text-align: center; }
+        .header { padding: 15px; background: #1e2329; border-bottom: 2px solid #f0b90b; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        #signal-container { padding: 20px; min-height: 180px; }
+        .card { max-width: 450px; margin: auto; padding: 25px; border-radius: 15px; border: 2px solid #333; transition: all 0.5s ease; background: #161a1e; }
+        .buy { border-color: #00ff88; box-shadow: 0 0 20px rgba(0, 255, 136, 0.2); }
+        .sell { border-color: #ff4d4d; box-shadow: 0 0 20px rgba(255, 77, 77, 0.2); }
+        .pair-name { font-size: 28px; font-weight: bold; color: #f0b90b; }
+        .price-val { font-size: 40px; margin: 10px 0; font-family: monospace; }
+        .status { font-size: 20px; font-weight: bold; padding: 8px; border-radius: 8px; }
+        #chart-box { width: 95%; height: 550px; margin: 20px auto; border: 1px solid #333; border-radius: 10px; overflow: hidden; }
+        .btn-link { display: inline-block; margin-top: 15px; padding: 10px 25px; background: #f0b90b; color: black; text-decoration: none; border-radius: 5px; font-weight: bold; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>💎 رادار الاكتساح المباشر</h1>
-        <div id="signal-box">
-            <div class="card">
-                <p>بإنتظار الإشارة الأولى من نظام V63...</p>
-            </div>
+
+    <div class="header">
+        <h1>💎 رادار الاكتساح المباشر V63.9</h1>
+    </div>
+
+    <div id="signal-container">
+        <div id="display" class="card">
+            <p>بإنتظار أول إشارة ذهبية من نظام V63.9...</p>
+            <small style="color: #848e9c;">تأكد من تشغيل كود Python في Google Colab</small>
         </div>
-        <div class="footer">تحديث لحظي عبر OANDA API</div>
+    </div>
+
+    <div id="chart-box">
+        <div id="tradingview_widget"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+        <script type="text/javascript">
+            new TradingView.Widget({
+                "autosize": true,
+                "symbol": "FX_IDC:EURUSD",
+                "interval": "1",
+                "timezone": "Etc/UTC",
+                "theme": "dark",
+                "style": "1",
+                "locale": "ar",
+                "toolbar_bg": "#f1f3f6",
+                "enable_publishing": false,
+                "hide_side_toolbar": false,
+                "allow_symbol_change": true,
+                "container_id": "tradingview_widget"
+            });
+        </script>
     </div>
 
     <script>
-        // إعدادات الربط (Firebase Config)
-        // ملاحظة: يمكنك إنشاء قاعدة بيانات مجانية على firebase.google.com ووضع إعداداتك هنا
-        const firebaseConfig = {
-            databaseURL: "https://forex-radar-joseph-default-rtdb.firebaseio.com/" 
-        };
+        // إعدادات Firebase الخاصة بك
+        const firebaseConfig = { databaseURL: "https://forex-radar-joseph-default-rtdb.firebaseio.com/" };
         firebase.initializeApp(firebaseConfig);
-        const signalRef = firebase.database().ref('liveSignal');
+        const dbRef = firebase.database().ref('liveSignal');
 
-        signalRef.on('value', (snapshot) => {
+        // الاستماع للتحديثات القادمة من Python
+        dbRef.on('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
-                const box = document.getElementById('signal-box');
+                const display = document.getElementById('display');
                 const isBuy = data.side === 'BUY';
-                const themeClass = isBuy ? 'buy-alert' : 'sell-alert';
-                const dirText = isBuy ? '▲ شراء (CALL)' : '▼ بيع (PUT)';
-                const dirColor = isBuy ? '#00ff88' : '#ff4d4d';
-
-                box.innerHTML = `
-                    <div class="card ${themeClass}">
-                        <div class="pair">${data.pair}</div>
-                        <div class="price">${data.price}</div>
-                        <div class="direction" style="color: ${dirColor}">${dirText}</div>
-                        <a href="https://pocketoption.com/smart-trading/" target="_blank" class="btn-pocket">دخول الصفقة الآن</a>
-                    </div>
-                `;
                 
-                // تنبيه صوتي عند وصول إشارة جديدة
+                display.className = `card ${isBuy ? 'buy' : 'sell'}`;
+                display.innerHTML = `
+                    <div class="pair-name">${data.pair}</div>
+                    <div class="price-val">${data.price}</div>
+                    <div class="status" style="color: ${isBuy ? '#00ff88' : '#ff4d4d'}">
+                        ${isBuy ? '▲ إشارة شراء (CALL)' : '▼ إشارة بيع (PUT)'}
+                    </div>
+                    <div style="margin-top:10px; font-size:14px; color:#848e9c;">التوقيت: ${data.time}</div>
+                    <a href="https://pocketoption.com/smart-trading/" target="_blank" class="btn-link">دخول الصفقة الآن</a>
+                `;
+
+                // تنبيه صوتي عند وصول إشارة
                 new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play();
             }
         });
