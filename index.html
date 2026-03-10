@@ -3,30 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>رادار أرهاف الرقمي</title>
+    <title>رادار أرهاف - نظام النبض الرقمي</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://s3.tradingview.com/tv.js"></script>
     <style>
-        body { background-color: #05070A; color: white; text-align: center; font-family: sans-serif; }
+        body { background-color: #05070A; color: white; text-align: center; font-family: sans-serif; overflow-x: hidden; }
         .filter-section { background: #0E141B; border: 1px solid #1E293B; border-radius: 1rem; padding: 15px; margin-bottom: 20px; }
         .asset-card { background: #0E141B; border: 1px solid #1E293B; border-radius: 1.5rem; overflow: hidden; margin-bottom: 2.5rem; }
-        .score-badge { padding: 2px 8px; border-radius: 5px; font-size: 12px; font-weight: bold; }
-        .buy-color { background: #00897b; color: white; }
-        .sell-color { background: #ff5252; color: white; }
-        .neutral-color { background: #546e7a; color: white; }
+        .score-badge { padding: 4px 10px; border-radius: 8px; font-size: 14px; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); }
+        .buy-color { background: #00897b; color: white; box-shadow: 0 0 10px #00897b; }
+        .sell-color { background: #ff5252; color: white; box-shadow: 0 0 10px #ff5252; }
+        .neutral-color { background: #1e293b; color: #94a3b8; }
+        .pulse-live { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
     </style>
 </head>
 <body class="p-4">
 
-    <h1 class="text-blue-500 font-black mb-4 italic text-lg uppercase">ARHAF DIGITAL RADAR</h1>
-
-    <div class="filter-section max-w-4xl mx-auto shadow-2xl">
-        <p class="text-[10px] text-gray-500 mb-2 uppercase font-bold">المحرك الرقمي اللحظي:</p>
-        <div id="filter-controls" class="flex flex-wrap justify-center"></div>
+    <h1 class="text-blue-500 font-black mb-2 italic text-xl">ARHAF PULSE V65.5</h1>
+    <div id="connection-indicator" class="text-[10px] mb-4 text-gray-500 uppercase tracking-widest">
+        الحالة: <span id="status-text" class="text-red-500">غير متصل</span>
     </div>
 
-    <button id="actionBtn" onclick="activateEngine()" class="max-w-4xl w-full p-4 bg-blue-600 rounded-xl font-bold mb-6 hover:bg-blue-500 transition-all shadow-lg active:scale-95">
-        🚀 تشغيل الرادار الرقمي التلقائي
+    <button id="actionBtn" onclick="activateEngine()" class="max-w-4xl w-full p-5 bg-blue-600 rounded-2xl font-black text-lg mb-8 hover:bg-blue-500 transition-all shadow-[0_0_20px_rgba(37,99,235,0.4)] active:scale-95">
+        ⚡ تفعيل نظام الاكتساح اللحظي
     </button>
     
     <div id="radar-grid" class="max-w-4xl mx-auto"></div>
@@ -41,7 +41,9 @@
             {s:"FX:GBPUSD", n:"GBP/USD", id:"gbpusd", ticker:"FX:GBPUSD"},
             {s:"FX:USDJPY", n:"USD/JPY", id:"usdjpy", ticker:"FX:USDJPY"},
             {s:"FX:AUDUSD", n:"AUD/USD", id:"audusd", ticker:"FX:AUDUSD"},
-            {s:"FX:USDCAD", n:"USD/CAD", id:"usdcad", ticker:"FX:USDCAD"}
+            {s:"FX:EURJPY", n:"EUR/JPY", id:"eurjpy", ticker:"FX:EURJPY"},
+            {s:"FX:GBPJPY", n:"GBP/JPY", id:"gbpjpy", ticker:"FX:GBPJPY"},
+            {s:"FX:EURCAD", n:"EUR/CAD", id:"eurcad", ticker:"FX:EURCAD"}
         ];
 
         let isEngineActive = false;
@@ -61,65 +63,76 @@
                 const data = await response.json();
 
                 data.data.forEach((result, index) => {
-                    const score = parseFloat(result.d[0]).toFixed(2); // تحويل النتيجة لرقم عشري
+                    const score = parseFloat(result.d[0]).toFixed(2);
                     const pairId = pairs[index].id;
                     const pairName = pairs[index].n;
 
-                    // تحديث الرقم في الصفحة
                     const badge = document.getElementById(`score_${pairId}`);
                     if (badge) {
-                        badge.innerHTML = `الزخم: ${score}`;
-                        badge.className = `score-badge ${score >= 0.5 ? 'buy-color' : (score <= -0.5 ? 'sell-color' : 'neutral-color')}`;
+                        badge.innerHTML = score;
+                        badge.className = `score-badge ${score >= 0.65 ? 'buy-color' : (score <= -0.65 ? 'sell-color' : 'neutral-color')}`;
                     }
 
-                    // إرسال تنبيه إذا تجاوزت القوة 0.5 (شراء) أو -0.5 (بيع)
-                    if (score <= -0.5) {
-                        sendTeleAlert(pairName, score, "🔴 بيع قوي");
-                    } else if (score >= 0.5) {
-                        sendTeleAlert(pairName, score, "🟢 شراء قوي");
+                    // نظام التنبيه - تم رفع الحساسية لـ 0.65 لضمان الجودة
+                    if (score <= -0.65) {
+                        sendTeleAlert(pairName, score, "🔴 بيع قوي جداً");
+                    } else if (score >= 0.65) {
+                        sendTeleAlert(pairName, score, "🟢 شراء قوي جداً");
                     }
                 });
-            } catch (e) { console.error("API Error"); }
+            } catch (e) { 
+                console.log("إعادة محاولة الاتصال..."); 
+            }
         }
 
         function sendTeleAlert(name, score, type) {
             const now = Date.now();
-            if (lastAlertTime[name] && (now - lastAlertTime[name] < 180000)) return;
+            // تقليل وقت منع التكرار لدقيقتين لاقتناص الفرص السريعة
+            if (lastAlertTime[name] && (now - lastAlertTime[name] < 120000)) return;
 
-            const message = `📊 <b>إشارة رقمية مؤكدة!</b>\n\n💰 الزوج: <b>${name}</b>\n⚡ القوة الرقمية: <b>${score}</b>\n🎯 الحالة: <b>${type}</b>\n\n🛡 <i>تم التحقق من 26 مؤشر فني</i>`;
-            fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(message)}&parse_mode=HTML`);
-            lastAlertTime[name] = now;
+            const message = `🎯 <b>اكتساح رقمي مكتمل!</b>\n\n💰 الأداة: <b>${name}</b>\n📊 القوة: <b>${score}</b>\n⚡ الإشارة: <b>${type}</b>\n\n✅ <i>الإشارة مدعومة بإجماع المؤشرات الفنية</i>`;
+            
+            fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent(message)}&parse_mode=HTML`)
+            .then(res => {
+                if(res.ok) lastAlertTime[name] = now;
+            });
         }
 
         function activateEngine() {
             isEngineActive = true;
-            document.getElementById('actionBtn').className = "max-w-4xl w-full p-4 bg-green-700 rounded-xl font-bold mb-6 transition-all";
-            document.getElementById('actionBtn').innerHTML = "🎯 المحرك الرقمي يراقب الأسواق...";
-            setInterval(checkSignals, 10000); // فحص سريع كل 10 ثوانٍ
+            const btn = document.getElementById('actionBtn');
+            btn.className = "max-w-4xl w-full p-5 bg-green-700 rounded-2xl font-black text-lg mb-8 shadow-[0_0_20px_rgba(21,128,61,0.5)] pulse-live";
+            btn.innerHTML = "🎯 الرادار يراقب ويرسل الآن...";
+            document.getElementById('status-text').innerHTML = "متصل ونشط برمجياً ✅";
+            document.getElementById('status-text').className = "text-green-500";
+
+            // فحص مكثف كل 8 ثوانٍ
+            setInterval(checkSignals, 8000);
+            
+            // إرسال نبضة تأكيد فورية للتلجرام
+            fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${CHAT_ID}&text=${encodeURIComponent("✅ <b>تم تفعيل نظام النبض الرقمي!</b>\nسأبدأ بإرسال الإشارات القوية فوراً.")}&parse_mode=HTML`);
         }
 
         function init() {
             const grid = document.getElementById('radar-grid');
-            const controls = document.getElementById('filter-controls');
             pairs.forEach(p => {
-                controls.innerHTML += `<label class="checkbox-item"><input type="checkbox" id="check_${p.id}" checked> ${p.n}</label>`;
                 grid.innerHTML += `
                     <div class="asset-card" id="card_${p.id}">
-                        <div class="p-2 bg-gray-900 font-bold text-blue-400 border-b border-gray-800 text-sm flex justify-between px-4">
-                            <span>${p.n}</span>
-                            <span id="score_${p.id}" class="score-badge neutral-color">جاري الحساب...</span>
+                        <div class="p-3 bg-gray-900 border-b border-gray-800 flex justify-between items-center px-6">
+                            <span class="font-bold text-blue-400 text-sm">${p.n}</span>
+                            <span id="score_${p.id}" class="score-badge neutral-color">0.00</span>
                         </div>
                         <div id="c_${p.id}" style="height:250px;"></div>
-                        <div id="t_${p.id}" style="height:380px;"></div>
+                        <div id="t_${p.id}" style="height:350px;"></div>
                     </div>`;
                 setTimeout(() => {
-                    new TradingView.widget({"autosize":true, "symbol":p.s, "interval":"1", "theme":"dark", "container_id":`c_${p.id}`, "hide_top_toolbar":true, "backgroundColor":"#0E141B"});
+                    new TradingView.widget({"autosize":true, "symbol":p.s, "interval":"1", "theme":"dark", "container_id":`c_${p.id}`, "hide_top_toolbar":true, "backgroundColor":"#0E141B", "hide_legend": true});
                     const s = document.createElement('script');
                     s.src = "https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js";
                     s.async = true;
-                    s.innerHTML = JSON.stringify({"interval":"1m", "width":"100%", "height":"100%", "symbol":p.s, "colorTheme":"dark", "locale":"ar"});
+                    s.innerHTML = JSON.stringify({"interval":"1m", "width":"100%", "height":"100%", "symbol":p.s, "colorTheme":"dark", "locale":"ar", "isTransparent": true});
                     document.getElementById(`t_${p.id}`).appendChild(s);
-                }, 1000);
+                }, 800);
             });
         }
         init();
