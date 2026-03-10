@@ -106,29 +106,3 @@
     </script>
 </body>
 </html>
-                setTimeout(() => {
-                    new TradingView.widget({
-                        "autosize": true, "symbol": p.s, "interval": "1", "theme": "dark",
-                        "container_id": `c_${p.id}`, "hide_top_toolbar": true, "backgroundColor": "#0E141B",
-                        "hide_legend": true, "save_image": false
-                    });
-
-                    const s = document.createElement('script');
-                    s.src = "https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js";
-                    s.async = true;
-                    s.innerHTML = JSON.stringify({
-                        "interval": "1m", "width": "100%", "height": "100%", "symbol": p.s, 
-                        "colorTheme": "dark", "locale": "ar", "isTransparent": true
-                    });
-                    document.getElementById(`t_${p.id}`).appendChild(s);
-                }, 1000);
-            });
-
-            // استعادة الاختيارات القديمة بعد ثانية من التحميل
-            setTimeout(loadPreferences, 1500);
-        }
-
-        init();
-    </script>
-</body>
-</html>
