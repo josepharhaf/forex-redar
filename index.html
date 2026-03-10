@@ -3,33 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>رادار جوزيف V63.9 الذكي</title>
+    <title>رادار جوزيف الذكي V63.9</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body { background: #0b0e11; color: white; font-family: 'Segoe UI', sans-serif; margin: 0; text-align: center; }
-        .header { padding: 10px; background: #1e2329; border-bottom: 2px solid #f0b90b; }
-        #signal-container { padding: 15px; min-height: 140px; }
-        .card { max-width: 450px; margin: auto; padding: 15px; border-radius: 12px; border: 2px solid #333; background: #161a1e; transition: 0.5s; }
-        .buy { border-color: #00ff88; box-shadow: 0 0 15px rgba(0, 255, 136, 0.3); }
-        .sell { border-color: #ff4d4d; box-shadow: 0 0 15px rgba(255, 77, 77, 0.3); }
+        body { background: #0b0e11; color: white; font-family: sans-serif; margin: 0; text-align: center; overflow-x: hidden; }
+        .header { padding: 10px; background: #1e2329; border-bottom: 2px solid #f0b90b; position: sticky; top: 0; z-index: 100; }
+        #signal-container { padding: 15px; min-height: 130px; }
+        .card { max-width: 400px; margin: auto; padding: 15px; border-radius: 12px; border: 2px solid #333; background: #161a1e; }
+        .buy { border-color: #00ff88; box-shadow: 0 0 15px rgba(0, 255, 136, 0.2); }
+        .sell { border-color: #ff4d4d; box-shadow: 0 0 15px rgba(255, 77, 77, 0.2); }
         .pair-name { font-size: 22px; font-weight: bold; color: #f0b90b; }
-        .price-val { font-size: 32px; margin: 5px 0; font-family: monospace; color: #fff; }
-        #chart-box { width: 98%; margin: 5px auto; border-radius: 8px; overflow: hidden; border: 1px solid #333; height: 500px; }
-        .btn-link { display: inline-block; margin-top: 8px; padding: 8px 18px; background: #f0b90b; color: black; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 14px; }
+        .price-val { font-size: 30px; margin: 5px 0; font-family: monospace; }
+        #chart-box { width: 100%; height: 500px; margin-top: 10px; background: #000; }
+        .btn-link { display: inline-block; margin-top: 10px; padding: 8px 20px; background: #f0b90b; color: black; text-decoration: none; border-radius: 5px; font-weight: bold; }
     </style>
 </head>
 <body>
-    <div class="header"><h3>💎 رادار الاكتساح المباشر V63.9</h3></div>
+    <div class="header"><h3>💎 رادار الاكتساح V63.9</h3></div>
 
     <div id="signal-container">
         <div id="display" class="card">
-            <p>بإنتظار أول إشارة لتحديث الشارت...</p>
+            <p>بإنتظار الإشارة القادمة لتغيير الشارت...</p>
         </div>
     </div>
 
-    <div id="chart-box">
-        <div id="tradingview_area"></div>
+    <div id="chart-box" id="tv_container">
+        <div id="player"></div>
     </div>
 
     <script>
@@ -37,17 +37,22 @@
         firebase.initializeApp(firebaseConfig);
         const dbRef = firebase.database().ref('liveSignal');
 
-        // دالة لتحديث الشارت بناءً على الزوج المستلم
-        function updateChart(pair) {
-            const cleanPair = pair.replace('/', '').replace('_', '');
-            document.getElementById('tradingview_area').innerHTML = `
-                <iframe src="https://www.tradingview.com/widgetembed/?symbol=FX_IDC:${cleanPair}&interval=1&theme=dark&style=1&timezone=Etc%2FUTC&locale=ar" 
-                        width="100%" height="500" frameborder="0" allowfullscreen></iframe>
+        function loadChart(pair) {
+            // تنظيف اسم الزوج ليتناسب مع TradingView (إزالة الشرطة وتحويله لكبير)
+            let clean = pair.replace('_', '').replace('/', '').toUpperCase();
+            
+            // تصحيح خاص للذهب
+            if (clean.includes("XAU")) clean = "XAUUSD";
+
+            const url = `https://www.tradingview.com/widgetembed/?symbol=FX_IDC:${clean}&interval=1&theme=dark&style=1&timezone=Etc%2FUTC&locale=ar`;
+            
+            document.getElementById('chart-box').innerHTML = `
+                <iframe src="${url}" width="100%" height="100%" frameborder="0" allowfullscreen></iframe>
             `;
         }
 
-        // تحميل شارت افتراضي عند البداية
-        updateChart('EUR_USD');
+        // تحميل شارت مبدئي
+        loadChart('EUR_USD');
 
         dbRef.on('value', (snapshot) => {
             const data = snapshot.val();
@@ -55,7 +60,6 @@
                 const display = document.getElementById('display');
                 const isBuy = data.side === 'BUY';
                 
-                // تحديث الكرت
                 display.className = `card ${isBuy ? 'buy' : 'sell'}`;
                 display.innerHTML = `
                     <div class="pair-name">${data.pair}</div>
@@ -63,13 +67,13 @@
                     <div style="color: ${isBuy ? '#00ff88' : '#ff4d4d'}; font-weight:bold;">
                         ${isBuy ? '▲ شراء (CALL)' : '▼ بيع (PUT)'}
                     </div>
-                    <a href="https://pocketoption.com/smart-trading/" target="_blank" class="btn-link">فتح Pocket Option</a>
+                    <a href="https://pocketoption.com/smart-trading/" target="_blank" class="btn-link">دخول الصفقة الآن</a>
                 `;
 
-                // التحديث السحري: تغيير الشارت فوراً ليتناسب مع الإشارة
-                updateChart(data.pair);
+                // تغيير الشارت فوراً للزوج الجديد
+                loadChart(data.pair);
 
-                // تنبيه صوتي
+                // صوت تنبيه
                 new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play();
             }
         });
