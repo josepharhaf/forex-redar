@@ -11,25 +11,27 @@
         .filter-section { background: #0E141B; border: 1px solid #1E293B; border-radius: 1rem; padding: 15px; margin-bottom: 20px; }
         .asset-card { background: #0E141B; border: 1px solid #1E293B; border-radius: 1.5rem; overflow: hidden; margin-bottom: 2.5rem; display: none; }
         .asset-card.active { display: block; }
-        .checkbox-item { display: inline-flex; align-items: center; background: #151D27; padding: 5px 12px; border-radius: 8px; margin: 4px; border: 1px solid #1E293B; cursor: pointer; font-size: 12px; }
-        .checkbox-item input { margin-left: 8px; }
+        .checkbox-item { display: inline-flex; align-items: center; background: #151D27; padding: 5px 12px; border-radius: 8px; margin: 4px; border: 1px solid #1E293B; cursor: pointer; font-size: 12px; transition: 0.3s; }
+        .checkbox-item:hover { border-color: #3b82f6; }
+        .checkbox-item input { margin-left: 8px; cursor: pointer; }
     </style>
 </head>
 <body class="p-4">
 
-    <h1 class="text-blue-500 font-black mb-4 italic text-lg">FX SELECTOR PRO</h1>
+    <h1 class="text-blue-500 font-black mb-4 italic text-lg uppercase tracking-widest">FX SELECTOR PRO</h1>
 
-    <div class="filter-section max-w-4xl mx-auto">
-        <p class="text-[10px] text-gray-500 mb-3 uppercase font-bold">اختر العملات التي تريد مراقبتها:</p>
+    <div class="filter-section max-w-4xl mx-auto shadow-2xl">
+        <p class="text-[10px] text-gray-500 mb-3 uppercase font-bold tracking-tighter">اختر العملات التي تريد مراقبتها الآن:</p>
         <div id="filter-controls" class="flex flex-wrap justify-center">
             </div>
     </div>
 
-    <button id="actionBtn" onclick="runPulseSystem()" class="max-w-4xl w-full p-4 bg-blue-600 rounded-xl font-bold mb-6 transition-all">
+    <button id="actionBtn" onclick="runPulseSystem()" class="max-w-4xl w-full p-4 bg-blue-600 hover:bg-blue-500 rounded-xl font-bold mb-6 shadow-lg transition-all transform active:scale-95">
         🚀 تشغيل وضع المراقبة اللحظية
     </button>
     
-    <div id="radar-grid" class="max-w-4xl mx-auto"></div>
+    <div id="radar-grid" class="max-w-4xl mx-auto">
+        </div>
 
     <script>
         const pairs = [
@@ -45,19 +47,44 @@
         ];
 
         function runPulseSystem() {
-            document.getElementById('actionBtn').classList.add('opacity-50');
-            document.getElementById('actionBtn').innerHTML = "🎯 الرادار يعمل الآن...";
-            // تم إلغاء الرنة بناءً على طلبك
+            const btn = document.getElementById('actionBtn');
+            btn.classList.add('bg-green-600');
+            btn.innerHTML = "🎯 الرادار نشط ويراقب الأسواق...";
+            // حفظ حالة التشغيل
+            localStorage.setItem('radar_active', 'true');
         }
 
         function toggleAsset(id) {
             const card = document.getElementById(`card_${id}`);
             const checkbox = document.getElementById(`check_${id}`);
+            
             if (checkbox.checked) {
                 card.classList.add('active');
             } else {
                 card.classList.remove('active');
             }
+            // حفظ الاختيارات في المتصفح
+            savePreferences();
+        }
+
+        function savePreferences() {
+            const selected = [];
+            pairs.forEach(p => {
+                if(document.getElementById(`check_${p.id}`).checked) selected.push(p.id);
+            });
+            localStorage.setItem('selected_pairs', JSON.stringify(selected));
+        }
+
+        function loadPreferences() {
+            const saved = JSON.parse(localStorage.getItem('selected_pairs') || "[]");
+            saved.forEach(id => {
+                const check = document.getElementById(`check_${id}`);
+                const card = document.getElementById(`card_${id}`);
+                if(check && card) {
+                    check.checked = true;
+                    card.classList.add('active');
+                }
+            });
         }
 
         function init() {
@@ -73,29 +100,40 @@
                     </label>
                 `;
 
-                // 2. توليد البطاقات (مخفية افتراضياً)
+                // 2. توليد البطاقات
                 grid.innerHTML += `
                     <div class="asset-card" id="card_${p.id}">
-                        <div class="p-3 bg-gray-900 font-bold text-blue-400 border-b border-gray-800">${p.n}</div>
-                        <div id="c_${p.id}" style="height:280px;"></div>
-                        <div id="t_${p.id}" style="height:400px;"></div>
+                        <div class="p-3 bg-gray-900 font-bold text-blue-400 border-b border-gray-800 flex justify-between px-6">
+                            <span>${p.n}</span>
+                            <span class="text-[10px] text-gray-500 uppercase">Live 1M</span>
+                        </div>
+                        <div id="c_${p.id}" style="height:300px;"></div>
+                        <div id="t_${p.id}" class="bg-[#0E141B] py-2" style="height:400px;"></div>
                     </div>`;
 
+                // تحميل شارت TradingView
                 setTimeout(() => {
                     new TradingView.widget({
-                        "autosize":true, "symbol":p.s, "interval":"1", "theme":"dark",
-                        "container_id":`c_${p.id}`, "hide_top_toolbar":true, "backgroundColor":"#0E141B"
+                        "autosize": true, "symbol": p.s, "interval": "1", "theme": "dark",
+                        "container_id": `c_${p.id}`, "hide_top_toolbar": true, "backgroundColor": "#0E141B",
+                        "hide_legend": true, "save_image": false
                     });
+
                     const s = document.createElement('script');
                     s.src = "https://s3.tradingview.com/external-embedding/embed-widget-technical-analysis.js";
                     s.async = true;
                     s.innerHTML = JSON.stringify({
-                        "interval":"1m", "width":"100%", "height":"100%", "symbol":p.s, "colorTheme":"dark", "locale":"ar"
+                        "interval": "1m", "width": "100%", "height": "100%", "symbol": p.s, 
+                        "colorTheme": "dark", "locale": "ar", "isTransparent": true
                     });
                     document.getElementById(`t_${p.id}`).appendChild(s);
                 }, 1000);
             });
+
+            // استعادة الاختيارات القديمة بعد ثانية من التحميل
+            setTimeout(loadPreferences, 1500);
         }
+
         init();
     </script>
 </body>
